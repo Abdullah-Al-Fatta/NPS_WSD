@@ -52,4 +52,6 @@ rsconnect/
 # Data folder
 data
 data/
+kec_scratch/
+kec_scratch
 
