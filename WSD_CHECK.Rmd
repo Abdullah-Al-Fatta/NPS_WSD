@@ -35,6 +35,80 @@ mapview(select_sources)
 ```
 
 
+```{r add_GWUDI}
+
+WSD_UPDATE <- WSD %>%
+  dplyr::mutate(gwudi = ifelse(grepl("GWUDI", system_type), "yes", "no"))
+
+
+
+```
+
+
+```{r check_update}
+
+identify_edits <- function(df_old, df_new, id_col = "wsd_source_id") {
+  
+  # 1. Clean and convert to character
+  df_old_clean <- df_old %>% mutate(across(everything(), as.character))
+  df_new_clean <- df_new %>% mutate(across(everything(), as.character))
+  
+  # 2. Check for duplicate IDs before proceeding
+  dupes_old <- df_old_clean %>% count(!!sym(id_col)) %>% filter(n > 1)
+  dupes_new <- df_new_clean %>% count(!!sym(id_col)) %>% filter(n > 1)
+  
+  if(nrow(dupes_old) > 0 | nrow(dupes_new) > 0) {
+    warning("Duplicate IDs found! Check your ID column for non-unique values.")
+    print(bind_rows(old = dupes_old, new = dupes_new, .id = "df"))
+  }
+
+  # 3. Pivot and Compare
+  diffs <- bind_rows(old = df_old_clean, new = df_new_clean, .id = "source_version") %>%
+    pivot_longer(-c(source_version, !!sym(id_col)), names_to = "column_name") %>%
+    # values_fn ensures we don't get 'list-cols' if duplicates exist
+    pivot_wider(names_from = source_version, 
+                values_from = value, 
+                values_fn = ~paste(unique(.x), collapse = "; ")) %>%
+    # Handle NAs explicitly to avoid logic errors
+    filter(
+      (is.na(old) & !is.na(new)) | 
+      (!is.na(old) & is.na(new)) | 
+      (old != new)
+    )
+
+  # 4. Final Output
+  if (nrow(diffs) > 0) {
+    message(paste("❌ Found", nrow(diffs), "edits:"))
+    diffs %>%
+      mutate(edit_summary = paste0("ID [", !!sym(id_col), 
+                                   "] | Col: ", column_name, 
+                                   " | '", old, "' -> '", new, "'")) %>%
+      pull(edit_summary) %>%
+      walk(print)
+  } else {
+    message("✅ No differences found.")
+  }
+}
+# Example Usage:
+identify_edits(WSD, WSD_UPDATE, id_col = "wsd_source_id")
+
+```
+
+
+```{r write_update}
+# JUST TESTING FOR NOW
+
+write_csv(WSD_UPDATE, "TEMP_DB.csv")
+
+
+# Example Usage:
+export_dated_csv(WSD_UPDATE, "TEMP_DB") 
+# Result: "data_updates/WSD_Sources_2026-04-01.csv"
+
+
+
+```
+
 
 ```{r system_info}
 
@@ -63,6 +137,7 @@ system_cols <- c("park_name",
 
 WSD_SYSTEM <- WSD %>%
   select(all_of(system_cols))
+
 
 
 ```
