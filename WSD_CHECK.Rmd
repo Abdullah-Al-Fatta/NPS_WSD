@@ -1,0 +1,68 @@
+---
+title: "DB_Check"
+author: "KEC"
+date: "2026-04-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("setup.R")
+```
+
+```{r read_WSD}
+
+WSD <- read_csv("TEMP_DB.csv", na = c("U","NA"), skip = 0) 
+
+
+# Create copy of source table as sf_object (i.e., with geospatial attributes). 
+# During this process, it is required that rows without location data are
+# dropped. Circle back to this later.
+WSD_GEO <- WSD %>%
+  dplyr::mutate(source_longitude = as.numeric(source_longitude),
+                source_latitude = as.numeric(source_latitude)) %>%
+  drop_na("source_longitude","source_latitude") %>%
+  st_as_sf(., 
+           coords = (c("source_longitude","source_latitude")), 
+           crs = 4326,
+           remove = FALSE) 
+
+mapview(WSD_GEO)
+
+
+mapview(select_sources)
+
+```
+
+
+
+```{r system_info}
+
+system_cols <- c("park_name",
+                 "region",
+                 "state",
+                 "park_unit",
+                 "water_system_name",
+                 "wsd_system_id", # Index
+                 "alternative_name",
+                 "classification",
+                 "pws_number",
+                 "fmss_number",
+                 "fmss_system_name",
+                 "description",
+                 "point_of_use",
+                 "water_entry_point_unique_id",
+                 "active",
+                 "seasonal",
+                 "system_type",
+                 "gwudi",
+                 "treatment_system_type",
+                 "use_category",
+                 "storage_capacity_gallons",
+                 "num_storage_tanks")
+
+WSD_SYSTEM <- WSD %>%
+  select(all_of(system_cols))
+
+
+```
