@@ -35,15 +35,27 @@ mapview(select_sources)
 ```
 
 
-```{r add_GWUDI}
-
-WSD_UPDATE <- WSD %>%
-  dplyr::mutate(gwudi = ifelse(grepl("GWUDI", system_type), "yes", "no"))
-
+```{r manual_update}
+park <- 
 
 
 ```
 
+```{r add_GWUDI}
+# ONE TIME EDIT
+
+#WSD_UPDATE <- WSD %>%
+#  dplyr::mutate(gwudi = ifelse(grepl("GWUDI", system_type), "yes", "no"))
+ 
+
+```
+
+
+```{ r read_individual_updates}
+
+
+
+```
 
 ```{r check_update}
 
@@ -92,18 +104,105 @@ identify_edits <- function(df_old, df_new, id_col = "wsd_source_id") {
 # Example Usage:
 identify_edits(WSD, WSD_UPDATE, id_col = "wsd_source_id")
 
+
+
 ```
 
 
-```{r write_update}
-# JUST TESTING FOR NOW
 
-write_csv(WSD_UPDATE, "TEMP_DB.csv")
 
+This function takes the existing "master" CSV and creates a timestamped copy in an archive folder.
+
+This ensures that the main scripts always point to the same filename, while archiving past versions.
+
+
+```{r write_update_and_archive}
+
+
+library(tools) # For file_path_sans_ext
+
+create_archive <- function(file_path = "TEMP_DB.csv", 
+                           archive_dir = "data/Water_Supply_Systems/Copies and Backups") {
+  
+  # 1. Safety check: Does the source file actually exist?
+  if (!file.exists(file_path)) {
+    stop("Error: The source file '", file_path, "' was not found.")
+  }
+  
+  # 2. Create the archive directory if it's missing
+  if (!dir.exists(archive_dir)) {
+    dir.create(archive_dir)
+    message("Created directory: ", archive_dir)
+  }
+  
+  # 3. Strip the path and extension to get the clean filename
+  base_name <- file_path_sans_ext(basename(file_path))
+  
+  # 4. Generate timestamp (YYYY-MM-DD_HHMM)
+  # Adding time prevents errors if you run this twice in one day
+  timestamp <- format(Sys.time(), "%Y-%m-%d_%H%M")
+  
+  # 5. Construct the new archived path
+  archive_name <- paste0(base_name, "_", timestamp, ".csv")
+  dest_path <- file.path(archive_dir, archive_name)
+  
+  # 6. Perform the copy
+  file.copy(from = file_path, to = dest_path, overwrite = FALSE)
+  
+  message("✅ Archive created: ", dest_path)
+}
 
 # Example Usage:
-export_dated_csv(WSD_UPDATE, "TEMP_DB") 
-# Result: "data_updates/WSD_Sources_2026-04-01.csv"
+create_archive()
+
+
+
+
+```
+
+
+"human-in-the-loop" safeguard for WSD. Requires manual confirmation of any edits to prevent accidental bulk-overwrites.
+
+
+```{r write_update}
+
+
+update_database <- function(current_db, new_db, 
+                            id_col = "wsd_source_id",
+                            target_file = "TEMP_DB.csv") {
+  
+  # 1. Print the Edits
+  # This uses the robust identify_edits function we built earlier
+  message("--- REVIEWING PROPOSED CHANGES ---")
+  identify_edits(current_db, new_db, id_col = id_col)
+  
+  # 2. Ask for User Confirmation
+  # The \n creates a new line for a cleaner look in the console
+  user_confirm <- readline(prompt = "\nDo you want to proceed with these updates? (yes/no): ")
+  
+  # 3. Logic Gate
+  if (tolower(user_confirm) %in% c("yes", "y")) {
+    
+    message("\nProceeding with update...")
+    
+    # 4. Create Archive
+    # Using your updated function with default arguments
+    create_archive()
+    
+    # 5. Write the New Database
+    # Writing to your target file (e.g., WSD_Master.csv)
+    write_csv(new_db, target_file)
+    
+    message("✅ Update Complete! Database written to: ", target_file)
+    
+  } else {
+    # If the user types anything else, the function stops
+    message("\n❌ Update cancelled by user. No changes made.")
+  }
+}
+
+# Example Usage:
+update_database(WSD, WSD_UPDATE)
 
 
 
