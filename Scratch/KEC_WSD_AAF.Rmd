@@ -27,7 +27,7 @@ mapviewOptions(basemaps = c("CartoDB.Positron", "OpenStreetMap","Esri.WorldImage
 
 ```{r park_boundary}
 
-park <- "BICY"
+park <- "VIIS"
 
 pb <- getParkBoundary(park) %>%
   st_transform(4326)
@@ -54,8 +54,10 @@ mapview(aoi, col.regions = "yellow", alpha.regions = 0.3) +
 # records collected from state and federal agencies. 
 # https://www.nature.com/articles/s41597-024-03186-3
 
+
+
 usgwd <- 
-  load_csv(paste0("data/Water_Supply_Systems/USGWD-Tabular/USGWD_", st$NAME,".csv"), 
+  load_csv("data/Water_Supply_Systems/USGWD-Tabular/USGWD_Florida.csv", 
            "Longitude", "Latitude", crs = 4269) %>%
   add_wgs_coords() %>%
   st_filter(aoi)
@@ -65,30 +67,30 @@ usgwd <-
 # KEC: I downloaded California wells for Mojave manually - California is weird and I
 # don't think it's easy to just download the whole state and filter in R
 # https://dwr.maps.arcgis.com/apps/webappviewer/index.html?id=181078580a214c0986e2da28f8623b37
-wells <- 
-  read_csv("data/Water_Supply_Systems/data_sources/Maine/ME_Wells.csv") %>%
-  clean_names() %>%
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
-  add_wgs_coords() %>%
-  st_filter(aoi) %>%
-  filter(longitude_wgs84 < 100)
+# wells <- 
+#   read_csv("C:/Users/abdul/OneDrive/Documents/NPS_WSD/data/Water_Supply_Systems/data_sources/Florida/SWF_wells.csv") %>%
+#   clean_names() %>%
+#   st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>%
+#   add_wgs_coords() %>%
+#   st_filter(aoi) %>%
+#   filter(longitude_wgs84 < 100)
 
 # Read in water rights database diversion points
 # For California, https://www.waterboards.ca.gov/waterrights/water_issues/programs/ewrims/
 #layers <- st_layers("data/Water_Supply_Systems/data_sources/California/eWRIMS_Data.gdb")
-pods <- 
-  st_read("data/Water_Supply_Systems/data_sources/California/eWRIMS_Data.gdb", 
-          layer = "Points_of_Diversion_20250701", crs = 3310) %>% 
-  add_wgs_coords() %>%
-  st_transform(crs = st_crs(aoi)) %>%
-  st_filter(aoi)
+# pods <- 
+#   st_read("data/Water_Supply_Systems/data_sources/California/bicy_geology.gdb", 
+#           layer = "Points_of_Diversion_20250701", crs = 3310) %>% 
+#   add_wgs_coords() %>%
+#   st_transform(crs = st_crs(aoi)) %>%
+#   st_filter(aoi)
 
-# Read in drinking water boundaries
-pws_boundaries <- 
-  st_read("data/Water_Supply_Systems/data_sources/California/California_Drinking_Water_System_Area_Boundaries/California_Drinking_Water_System_Area_Boundaries.shp") %>% 
-  st_make_valid() %>%
-  st_transform(crs = st_crs(aoi)) %>%
-  st_filter(aoi)
+# # Read in drinking water boundaries
+# pws_boundaries <- 
+#   st_read("data/Water_Supply_Systems/data_sources/California/California_Drinking_Water_System_Area_Boundaries/California_Drinking_Water_System_Area_Boundaries.shp") %>% 
+#   st_make_valid() %>%
+#   st_transform(crs = st_crs(aoi)) %>%
+#   st_filter(aoi)
 
 
 ```
@@ -164,7 +166,7 @@ mapview(wells,
 
 ```{r search_buildings}
 
-search_str <- "OA - "
+search_str <- "LP"
 
 bldg <- bldg_all %>% 
   dplyr::select(BLDGNAME, BLDGALTNAM, MAPLABEL, BLDGSTATUS, BLDGTYPE, FACOWNER, FACOCCUPAN, FACMAINTAI, FACUSE, SEASONAL, UNITCODE, UNITNAME) %>%
@@ -194,7 +196,7 @@ mapview(sel_bldg, layer.name = "select_buildings") +
 
 ```{r search_buildings}
 
-search_str <- "CS"
+search_str <- "LP"
 
 pois <- get_pois(aoi) %>% 
   st_transform(4326) %>% # transform to WGS 84 and add coordinates to bldg
