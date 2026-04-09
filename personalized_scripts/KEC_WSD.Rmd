@@ -27,7 +27,7 @@ mapviewOptions(basemaps = c("CartoDB.Positron", "OpenStreetMap","Esri.WorldImage
 
 ```{r park_boundary}
 
-park <- "ACAD"
+park <- "AGFO"
 
 pb <- getParkBoundary(park) %>%
   st_transform(4326)
@@ -162,7 +162,7 @@ mapview(wells,
 
 ```{r search_buildings}
 
-search_str <- "bird"
+search_str <- "Well"
 
 bldg <- bldg_all %>% 
   dplyr::select(BLDGNAME, BLDGALTNAM, MAPLABEL, BLDGSTATUS, BLDGTYPE, FACOWNER, FACOCCUPAN, FACMAINTAI, FACUSE, SEASONAL, UNITCODE, UNITNAME) %>%
