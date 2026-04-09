@@ -1,0 +1,242 @@
+---
+title: "DB_Check"
+author: "KEC"
+date: "2026-04-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("setup.R")
+```
+
+```{r read_WSD}
+
+WSD <- read_csv("TEMP_DB.csv", na = c("U","NA"), skip = 0) 
+
+
+# Create copy of source table as sf_object (i.e., with geospatial attributes). 
+# During this process, it is required that rows without location data are
+# dropped. Circle back to this later.
+WSD_GEO <- WSD %>%
+  dplyr::mutate(source_longitude = as.numeric(source_longitude),
+                source_latitude = as.numeric(source_latitude)) %>%
+  drop_na("source_longitude","source_latitude") %>%
+  st_as_sf(., 
+           coords = (c("source_longitude","source_latitude")), 
+           crs = 4326,
+           remove = FALSE) 
+
+mapview(WSD_GEO)
+
+
+mapview(select_sources)
+
+```
+
+
+```{r manual_update}
+park <- 
+
+
+```
+
+```{r add_GWUDI}
+# ONE TIME EDIT
+
+#WSD_UPDATE <- WSD %>%
+#  dplyr::mutate(gwudi = ifelse(grepl("GWUDI", system_type), "yes", "no"))
+ 
+
+```
+
+
+```{ r read_individual_updates}
+
+
+
+```
+
+```{r check_update}
+
+identify_edits <- function(df_old, df_new, id_col = "wsd_source_id") {
+  
+  # 1. Clean and convert to character
+  df_old_clean <- df_old %>% mutate(across(everything(), as.character))
+  df_new_clean <- df_new %>% mutate(across(everything(), as.character))
+  
+  # 2. Check for duplicate IDs before proceeding
+  dupes_old <- df_old_clean %>% count(!!sym(id_col)) %>% filter(n > 1)
+  dupes_new <- df_new_clean %>% count(!!sym(id_col)) %>% filter(n > 1)
+  
+  if(nrow(dupes_old) > 0 | nrow(dupes_new) > 0) {
+    warning("Duplicate IDs found! Check your ID column for non-unique values.")
+    print(bind_rows(old = dupes_old, new = dupes_new, .id = "df"))
+  }
+
+  # 3. Pivot and Compare
+  diffs <- bind_rows(old = df_old_clean, new = df_new_clean, .id = "source_version") %>%
+    pivot_longer(-c(source_version, !!sym(id_col)), names_to = "column_name") %>%
+    # values_fn ensures we don't get 'list-cols' if duplicates exist
+    pivot_wider(names_from = source_version, 
+                values_from = value, 
+                values_fn = ~paste(unique(.x), collapse = "; ")) %>%
+    # Handle NAs explicitly to avoid logic errors
+    filter(
+      (is.na(old) & !is.na(new)) | 
+      (!is.na(old) & is.na(new)) | 
+      (old != new)
+    )
+
+  # 4. Final Output
+  if (nrow(diffs) > 0) {
+    message(paste("❌ Found", nrow(diffs), "edits:"))
+    diffs %>%
+      mutate(edit_summary = paste0("ID [", !!sym(id_col), 
+                                   "] | Col: ", column_name, 
+                                   " | '", old, "' -> '", new, "'")) %>%
+      pull(edit_summary) %>%
+      walk(print)
+  } else {
+    message("✅ No differences found.")
+  }
+}
+# Example Usage:
+identify_edits(WSD, WSD_UPDATE, id_col = "wsd_source_id")
+
+
+
+```
+
+
+
+
+This function takes the existing "master" CSV and creates a timestamped copy in an archive folder.
+
+This ensures that the main scripts always point to the same filename, while archiving past versions.
+
+
+```{r write_update_and_archive}
+
+
+library(tools) # For file_path_sans_ext
+
+create_archive <- function(file_path = "TEMP_DB.csv", 
+                           archive_dir = "data/Water_Supply_Systems/Copies and Backups") {
+  
+  # 1. Safety check: Does the source file actually exist?
+  if (!file.exists(file_path)) {
+    stop("Error: The source file '", file_path, "' was not found.")
+  }
+  
+  # 2. Create the archive directory if it's missing
+  if (!dir.exists(archive_dir)) {
+    dir.create(archive_dir)
+    message("Created directory: ", archive_dir)
+  }
+  
+  # 3. Strip the path and extension to get the clean filename
+  base_name <- file_path_sans_ext(basename(file_path))
+  
+  # 4. Generate timestamp (YYYY-MM-DD_HHMM)
+  # Adding time prevents errors if you run this twice in one day
+  timestamp <- format(Sys.time(), "%Y-%m-%d_%H%M")
+  
+  # 5. Construct the new archived path
+  archive_name <- paste0(base_name, "_", timestamp, ".csv")
+  dest_path <- file.path(archive_dir, archive_name)
+  
+  # 6. Perform the copy
+  file.copy(from = file_path, to = dest_path, overwrite = FALSE)
+  
+  message("✅ Archive created: ", dest_path)
+}
+
+# Example Usage:
+create_archive()
+
+
+
+
+```
+
+
+"human-in-the-loop" safeguard for WSD. Requires manual confirmation of any edits to prevent accidental bulk-overwrites.
+
+
+```{r write_update}
+
+
+update_database <- function(current_db, new_db, 
+                            id_col = "wsd_source_id",
+                            target_file = "TEMP_DB.csv") {
+  
+  # 1. Print the Edits
+  # This uses the robust identify_edits function we built earlier
+  message("--- REVIEWING PROPOSED CHANGES ---")
+  identify_edits(current_db, new_db, id_col = id_col)
+  
+  # 2. Ask for User Confirmation
+  # The \n creates a new line for a cleaner look in the console
+  user_confirm <- readline(prompt = "\nDo you want to proceed with these updates? (yes/no): ")
+  
+  # 3. Logic Gate
+  if (tolower(user_confirm) %in% c("yes", "y")) {
+    
+    message("\nProceeding with update...")
+    
+    # 4. Create Archive
+    # Using your updated function with default arguments
+    create_archive()
+    
+    # 5. Write the New Database
+    # Writing to your target file (e.g., WSD_Master.csv)
+    write_csv(new_db, target_file)
+    
+    message("✅ Update Complete! Database written to: ", target_file)
+    
+  } else {
+    # If the user types anything else, the function stops
+    message("\n❌ Update cancelled by user. No changes made.")
+  }
+}
+
+# Example Usage:
+update_database(WSD, WSD_UPDATE)
+
+
+
+```
+
+
+```{r system_info}
+
+system_cols <- c("park_name",
+                 "region",
+                 "state",
+                 "park_unit",
+                 "water_system_name",
+                 "wsd_system_id", # Index
+                 "alternative_name",
+                 "classification",
+                 "pws_number",
+                 "fmss_number",
+                 "fmss_system_name",
+                 "description",
+                 "point_of_use",
+                 "water_entry_point_unique_id",
+                 "active",
+                 "seasonal",
+                 "system_type",
+                 "gwudi",
+                 "treatment_system_type",
+                 "use_category",
+                 "storage_capacity_gallons",
+                 "num_storage_tanks")
+
+WSD_SYSTEM <- WSD %>%
+  select(all_of(system_cols))
+
+
+
+```
