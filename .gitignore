@@ -55,3 +55,14 @@ data/
 kec_scratch/
 kec_scratch
 
+
+# ---- Merge coordinate notebook (Scratch/merge_coords.Rmd) -------------------
+# Per-machine paths config; never share via git
+Scratch/config.R
+!Scratch/config.example.R
+
+# Spreadsheet/CSV data should not be tracked anywhere in the repo
+*.xlsx
+*.xls
+*.xlsm
+*.csv
