@@ -8,6 +8,15 @@
 #   3. Save -- config.R is git-ignored, so your local edits won't be pushed
 #
 # Use forward slashes in paths even on Windows (R handles this fine).
+#
+# Running interactively (Ctrl+Enter) rather than knitting? If you hit
+# "config.R not found", run this once in the console first:
+#
+#   setwd("C:/path/to/your/repo/Scratch")
+#
+# or install rstudioapi so auto-detection works:
+#
+#   install.packages("rstudioapi")
 # =============================================================================
 
 # Path to the original (authoritative) workbook.
