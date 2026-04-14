@@ -65,20 +65,48 @@ library(dplyr)
 # config.example.R to config.R and edit the paths inside.
 #
 # We look for config.R next to this .Rmd file (not in getwd()), so it works
-# regardless of whether you knit from RStudio, source the file from a project
-# root, or run chunks interactively.
+# whether you knit or run chunks interactively. Detection tries, in order:
+#   1. knitr::current_input()   -- works when knitting
+#   2. rstudioapi::getSourceEditorContext()$path  -- works in RStudio editor
+#   3. getwd()                  -- last-resort fallback
 #
 # config.R must define: original_file, working_files, output_file
-script_dir <- tryCatch(
-  dirname(knitr::current_input(dir = TRUE)),     # works inside knit
-  error = function(e) getwd()                    # fallback for interactive use
-)
+
+find_script_dir <- function() {
+  # Try each strategy, normalizing any tilde (~) in the returned path so
+  # downstream file.exists() works reliably.
+  normalize <- function(p) {
+    if (is.null(p) || !nzchar(p)) return(NULL)
+    normalizePath(p, winslash = "/", mustWork = FALSE)
+  }
+
+  # (1) knitting
+  path <- tryCatch(knitr::current_input(dir = TRUE), error = function(e) NULL)
+  path <- normalize(path)
+  if (!is.null(path)) return(dirname(path))
+
+  # (2) interactive in RStudio: ask the editor which file is open
+  if (requireNamespace("rstudioapi", quietly = TRUE) &&
+      rstudioapi::isAvailable()) {
+    path <- tryCatch(rstudioapi::getSourceEditorContext()$path,
+                     error = function(e) NULL)
+    path <- normalize(path)
+    if (!is.null(path)) return(dirname(path))
+  }
+
+  # (3) fallback
+  getwd()
+}
+
+script_dir  <- find_script_dir()
 config_path <- file.path(script_dir, "config.R")
 
 if (!file.exists(config_path)) {
   stop("config.R not found at:\n  ", config_path,
-       "\nCopy config.example.R to config.R (in the same folder as this .Rmd) ",
-       "and edit the paths inside.")
+       "\n\nIf that's the wrong folder, setwd() to the folder containing ",
+       "merge_coords.Rmd and re-run this chunk.\n",
+       "Otherwise copy config.example.R to config.R (in the same folder ",
+       "as this .Rmd) and edit the paths inside.")
 }
 source(config_path)
 
