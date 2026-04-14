@@ -64,12 +64,23 @@ library(dplyr)
 # wherever their data lives. If you don't have one yet, copy
 # config.example.R to config.R and edit the paths inside.
 #
+# We look for config.R next to this .Rmd file (not in getwd()), so it works
+# regardless of whether you knit from RStudio, source the file from a project
+# root, or run chunks interactively.
+#
 # config.R must define: original_file, working_files, output_file
-if (!file.exists("config.R")) {
-  stop("config.R not found in the working directory. ",
-       "Copy config.example.R to config.R and edit the paths inside.")
+script_dir <- tryCatch(
+  dirname(knitr::current_input(dir = TRUE)),     # works inside knit
+  error = function(e) getwd()                    # fallback for interactive use
+)
+config_path <- file.path(script_dir, "config.R")
+
+if (!file.exists(config_path)) {
+  stop("config.R not found at:\n  ", config_path,
+       "\nCopy config.example.R to config.R (in the same folder as this .Rmd) ",
+       "and edit the paths inside.")
 }
-source("config.R")
+source(config_path)
 
 # ---- Sanity check: did config.R define what we need? ------------------------
 required_vars <- c("original_file", "working_files", "output_file")
