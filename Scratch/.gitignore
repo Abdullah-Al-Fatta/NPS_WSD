@@ -1,0 +1,35 @@
+# ---- Data files (should NEVER be in git) ------------------------------------
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+
+# ---- Per-machine config (each user has their own; keep example tracked) -----
+config.R
+!config.example.R
+
+# ---- R session/workspace ----------------------------------------------------
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# ---- Knit artifacts ---------------------------------------------------------
+*.html
+*.pdf
+*_cache/
+*_files/
+/_book/
+/_bookdown_files/
+
+# ---- OS cruft ---------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Editor ----------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*~
